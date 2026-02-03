@@ -1,0 +1,9 @@
+# Devenv generated files
+.devenv/
+.devenv.flake.nix
+
+# Lean build directory
+.lake/
+
+# Primer app generated files
+primer-app/src/sectionContent.ts
