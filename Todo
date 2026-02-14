@@ -1,0 +1,41 @@
+1. _Proof / _Thm / _ATP wrappers (~lines 1297-1895)
+   Nearly every core lemma has 1-3 trivial copies with a _Proof, _Thm, or _ATP
+   suffix whose body is just `exact?`, `convert ... using 1`, or a direct call
+   to the original. ~40 such wrappers exist, e.g.:
+     ReachableCount_Zero / ReachableCount_Zero_Proof / ReachableCount_Zero_Thm / ReachableCount_Zero_Proof_2
+     FiniteBoundedTape / FiniteBoundedTape_Proof
+     step_eq_NextConfig / step_eq_NextConfig_Proof / step_eq_NextConfig_ATP
+     FiniteEdges / FiniteEdges_Proof / FiniteEdges_ATP
+     ImmermanWitness_Correct / ImmermanWitness_Correct_Proof / ImmermanWitness_Theorem / ImmermanWitness_Theorem_ATP
+     NSPACE_Closed_Under_Complement_Conditional / _Proof / _Proof_2 / _Proof_3 / _Thm
+   ACTION: Delete all _Proof/_Thm/_ATP duplicates; update any call sites to
+   use the original lemma directly.
+
+2. DualMachine variants (lines 2067-2141)
+   DualMachine, DualMachine_v3, DualMachine_v4 define nearly the same machine
+   with minor state-type differences (Option vs Sum). Only DualMachine_v4 style
+   (Sum) is arguably needed, since NormalizedTM_v2 supersedes them all.
+   ACTION: Keep only the one actually used (none are referenced later); delete
+   the rest.
+
+3. NormalizedTM / NormalizedTM_v2 (lines 2207-2260)
+   NormalizedTM and NormalizedTM_v2 are character-for-character identical.
+   ACTION: Delete NormalizedTM; rename NormalizedTM_v2 to NormalizedTM.
+
+4. AcceptsCoN_imp_NormalizedTM_v2_AcceptsCoN x3 (lines 2441-2537)
+   Three versions: the original, _v2 (body is `exact?`), and _v3 (calls _v2).
+   ACTION: Keep one; delete the other two.
+
+5. Repeated Nat.log2 helper lemmas (lines 1207-1259, 1397-1412)
+   Nat.log2_mul_le / Nat.log2_mul_le_Proof
+   Nat.log2_pow_le / Nat.log2_pow_le_Proof
+   Nat.log2_mul3_le / Nat.log2_mul3_le_Proof
+   ACTION: Delete the _Proof copies.
+
+6. Exists_Minimal_Chain / ListChain_imp_NodupListChain duplication (lines 931-960, 1577-1635)
+   Both the original and _Proof versions contain the same Nat.find-based proof
+   inlined. Factor the Nat.find argument into a small helper or keep only one copy.
+
+7. Harmonic generalize_proofs tactic (lines 1-227)
+   ~225 lines of boilerplate for a custom tactic. If Mathlib's built-in
+   generalize_proofs suffices, this can be removed entirely.
