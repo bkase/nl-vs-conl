@@ -19,7 +19,6 @@ Formalization of the Immerman-Szelepcsényi theorem (NL = coNL). We prove that i
 
 import Mathlib
 
-
 import Mathlib.Tactic.GeneralizeProofs
 
 namespace Harmonic.GeneralizeProofs
@@ -1285,189 +1284,6 @@ theorem NSPACE_Closed_Under_Complement_Conditional
       use k', hk', M';
       unfold LanguageRecognizedByN LanguageComplement; aesop;
 
-theorem ImmermanWitness_Correct_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (S : ℕ → ℕ) (hS : SpaceBounded M S) (input : List σ) :
-  (¬ AcceptsN M input) ↔ ∃ Ns S_final, ImmermanWitness M S hS input Ns S_final := by
-    have := @ImmermanWitness_Correct;
-    exact this M S hS input
-
-/-
-If the Immerman construction exists, then NSPACE is closed under complementation (with a linear space blowup).
--/
-theorem NSPACE_Closed_Under_Complement_Conditional_Proof
-  (h_construct : Immerman_Construction_Exists_Prop)
-  {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (S : ℕ → ℕ) (hS : ∀ n, S n ≥ Nat.log2 n) (L : Set (List σ)) :
-  InNSPACE S L → InNSPACE (fun n => 10 * S n) (LanguageComplement L) := by
-    exact?
-
-/-
-If the count of configurations reachable in n steps is N_prev, then the count of configurations reachable in n+1 steps is the size of the set of configurations c such that there exists a witness set S of size N_prev of reachable-in-n configurations, where c is either in S or a successor of S.
--/
-theorem Count_Next_Step_Thm {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (input : List σ) (n : ℕ) (N_prev : ℕ) :
-  ReachableCount M input n = N_prev →
-  ReachableCount M input (n + 1) =
-  Nat.card { c | ∃ (S : Set (Configuration k σ M.V)),
-    S.Finite ∧ Nat.card S = N_prev ∧
-    (∀ s ∈ S, ReachableInAtMost M (InitialConfig M input) s n) ∧
-    (c ∈ S ∨ ∃ s ∈ S, step M s c) } := by
-      exact?
-
-/-
-If Ns is a valid count sequence, then the i-th element of Ns is the number of configurations reachable in at most i steps.
--/
-theorem ValidCountSequence_Correct_Proved {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (input : List σ) (Ns : List ℕ) :
-  ValidCountSequence M input Ns →
-  ∀ i : Fin Ns.length, Ns.get i = ReachableCount M input i := by
-    -- Apply the lemma ValidCountSequence_Correct to conclude the proof.
-    apply ValidCountSequence_Correct
-
-/-
-A Turing machine M rejects an input if and only if there exists an Immerman witness (a sequence of counts and a set of final configurations) certifying non-acceptance.
--/
-theorem ImmermanWitness_Theorem {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (S : ℕ → ℕ) (hS : SpaceBounded M S) (input : List σ) :
-  (¬ AcceptsN M input) ↔ ∃ Ns S_final, ImmermanWitness M S hS input Ns S_final := by
-    convert ImmermanWitness_Correct M S hS input using 1
-
-/-
-The set of tapes with content bounded by S (i.e., default value for indices > S) is finite.
--/
-lemma FiniteBoundedTape_Proof {σ : Type} [Fintype σ] [Inhabited σ] [DecidableEq σ] (S : ℕ) :
-  Set.Finite { t : ℕ → σ | ∀ n, n > S → t n = default } := by
-    exact FiniteBoundedTape S |> Set.Finite.subset <| fun t ht => ht
-
-/-
-The set of bounded tapes (tape 0 fixed, others bounded by S) is finite.
--/
-lemma FiniteBoundedTapes_Proof (k : ℕ) (σ : Type) [Fintype σ] [Inhabited σ] [DecidableEq σ] [NeZero k] (S : ℕ) (input : List σ) :
-  Set.Finite { ts | BoundedTapes k σ S input ts } := by
-    convert FiniteBoundedTapes k σ S input using 1
-
-/-
-The set of bounded positions (each coordinate in [-S, S]) is finite.
--/
-lemma FiniteBoundedPositions_Proof (k : ℕ) (S : ℕ) :
-  Set.Finite { ps : Fin k → ℤ | BoundedPositions k S ps } := by
-    have h_finite_positions : Set.Finite {ps : Fin k → ℤ | ∀ i, |ps i| ≤ S} := by
-      have : ∀ i : Fin k, Set.Finite {x : ℤ | |x| ≤ S} := by
-        exact fun i => Set.Finite.subset ( Set.finite_Icc ( - ( S : ℤ ) ) ( S : ℤ ) ) fun x hx => ⟨ neg_le_of_abs_le hx, le_of_abs_le hx ⟩
-      exact Set.Finite.subset ( Set.Finite.pi fun i => this i ) fun x hx => by aesop;;
-    exact h_finite_positions.subset fun x hx => fun i => by simpa [ ← Int.ofNat_le ] using hx i;
-
-/-
-The set of bounded configuration tuples (state, tapes, positions) is finite.
--/
-lemma FiniteBoundedConfigTuples_Proof {k : ℕ} [NeZero k] (M : TuringMachine k σ) (S : ℕ) (input : List σ) :
-  Set.Finite (BoundedConfigTuples M S input) := by
-    exact?
-
-/-
-The set of states is finite.
--/
-lemma FiniteStates_Proof {k : ℕ} (M : TuringMachine k σ) : Set.Finite (Set.univ : Set M.V) := by
-  convert Set.finite_univ;
-  convert M.fintypeV.finite
-
-/-
-If a Turing machine is space-bounded by S, then every reachable configuration is a BoundedConfig (positions within S, tapes default outside S).
--/
-lemma SpaceBounded_Implies_BoundedConfig_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (S : ℕ → ℕ) (hM : SpaceBounded M S) (input : List σ) (c : Configuration k σ M.V) :
-  Reachable M (InitialConfig M input) c → BoundedConfig M (S input.length) input c := by
-    -- By definition of Reachable, we need to consider three cases: when c is the initial configuration, when c is obtained by a step from some reachable configuration c', and when c is obtained by transitive closure of reachability.
-    apply SpaceBounded_Implies_BoundedConfig M S hM input c
-
-/-
-If the Immerman construction exists, then NSPACE is closed under complementation.
--/
-theorem NSPACE_Closed_Under_Complement_Conditional_Thm
-  (h_construct : Immerman_Construction_Exists_Prop)
-  {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (S : ℕ → ℕ) (hS : ∀ n, S n ≥ Nat.log2 n) (L : Set (List σ)) :
-  InNSPACE S L → InNSPACE (fun n => 10 * S n) (LanguageComplement L) := by
-    -- Apply the Immerman construction hypothesis to obtain the existence of the required Turing machine.
-    apply NSPACE_Closed_Under_Complement_Conditional h_construct S hS L
-
-/-
-The number of bits required to represent MaxSteps is bounded by a linear function of S.
--/
-lemma Log_MaxSteps_Bound_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (S : ℕ) (hS : S > 0) :
-  Nat.log2 (MaxSteps M S) ≤ Nat.log2 (@Fintype.card M.V M.fintypeV) + k * (Nat.log2 (2 * S + 1) + 1) + (k - 1) * (S + 1) * (Nat.log2 (Fintype.card σ) + 1) + 2 := by
-    convert Log_MaxSteps_Bound M S hS using 1
-
-/-
-The integer logarithm of a product of three numbers is at most the sum of their logarithms plus two.
--/
-lemma Nat.log2_mul3_le_Proof (a b c : ℕ) : Nat.log2 (a * b * c) ≤ Nat.log2 a + Nat.log2 b + Nat.log2 c + 2 := by
-  exact?
-
-/-
-The integer logarithm of a power is at most the exponent times the logarithm of the base plus one.
--/
-lemma Nat.log2_pow_le_Proof (a b : ℕ) : Nat.log2 (a ^ b) ≤ b * (Nat.log2 a + 1) := by
-  exact?
-
-/-
-The set of configurations reachable in at most n steps is finite.
--/
-lemma FiniteReachableSet_Proof {k : ℕ} [NeZero k] (M : TuringMachine k σ) (input : List σ) (n : ℕ) :
-  Set.Finite (ReachableSet M input n) := by
-    exact?
-
-/-
-The set of edges in the Turing machine is finite.
--/
-lemma FiniteEdges_Proof {k : ℕ} [NeZero k] (M : TuringMachine k σ) : Set.Finite M.edges := by
-  have h_finite_edges : Finite (M.V × M.V × (Fin k → σ) × (Fin (k-1) → σ) × (Fin k → Move)) := by
-    haveI := M.fintypeV; infer_instance;
-  exact Set.toFinite _
-
-/-
-If a configuration is reachable in at most n steps, it is reachable in at most n+1 steps.
--/
-lemma ReachableInAtMost_Mono_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (c1 c2 : Configuration k σ M.V) (n : ℕ) :
-  ReachableInAtMost M c1 c2 n → ReachableInAtMost M c1 c2 (n + 1) := by
-    exact?
-
-/-
-The number of reachable configurations is non-decreasing with the number of steps.
--/
-lemma ReachableCount_Mono_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (input : List σ) (n : ℕ) :
-  ReachableCount M input n ≤ ReachableCount M input (n + 1) := by
-    exact?
-
-/-
-If a configuration is reachable in at most n+1 steps, it is either reachable in at most n steps or it is a successor of a configuration reachable in at most n steps.
--/
-lemma ReachableInAtMost_Succ_Imp_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (input : List σ) (c' : Configuration k σ M.V) (n : ℕ) :
-  ReachableInAtMost M (InitialConfig M input) c' (n + 1) →
-  ReachableInAtMost M (InitialConfig M input) c' n ∨
-  ∃ c, ReachableInAtMost M (InitialConfig M input) c n ∧ step M c c' := by
-    convert ReachableInAtMost_Succ_Imp M input c' n using 1
-
-/-
-The number of reachable configurations is bounded by the total number of space-bounded configurations.
--/
-lemma ReachableCount_Bounded_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (S : ℕ → ℕ) (hS : SpaceBounded M S) (input : List σ) (n : ℕ) :
-  ReachableCount M input n ≤ Nat.card { c : Configuration k σ M.V | BoundedConfig M (S input.length) input c } := by
-    apply le_trans (ReachableCount_Mono M input n) (ReachableCount_Bounded M S hS input (n + 1))
-
-/-
-The set of configurations reachable in 0 steps is exactly the singleton set containing the initial configuration.
--/
-lemma ReachableInAtMost_Zero_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (input : List σ) :
-  { c | ReachableInAtMost M (InitialConfig M input) c 0 } = { InitialConfig M input } := by
-    convert ReachableInAtMost_Zero M input using 1
-
 /-
 If c' is a valid successor of c, then c' is in the set of potential next configurations.
 -/
@@ -1482,15 +1298,6 @@ lemma Step_implies_NextConfigs {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ]
     congr with i n ; rcases i with ⟨ _ | i, hi ⟩ <;> simp_all +decide [ Fin.ext_iff ];
     · grind;
     · rw [ hc'.2.2.2.1 ]
-
-/-
-If c is reachable in at most n steps and c -> c', then c' is reachable in at most n+1 steps.
--/
-lemma ReachableInAtMost_Step_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (input : List σ) (c c' : Configuration k σ M.V) (n : ℕ) :
-  ReachableInAtMost M (InitialConfig M input) c n → step M c c' →
-  ReachableInAtMost M (InitialConfig M input) c' (n + 1) := by
-    exact?
 
 /-
 The set of configurations reachable in at most n steps is a subset of the recursively defined ReachableSet.
@@ -1512,273 +1319,6 @@ lemma ReachableInAtMost_subset_ReachableSet {k : ℕ} [NeZero k] {σ : Type} [De
           exact ReachableInAtMost_Succ_Imp M input c n hc |> fun h => h.resolve_left hc' |> fun ⟨ c', hc', h_step ⟩ => ⟨ c', hc', h_step ⟩;
         exact Set.mem_union_right _ ( Set.mem_sUnion.mpr ⟨ _, Set.mem_image_of_mem _ ( ih hc' ), Step_implies_NextConfigs M c' c h_step ⟩ ))
     skip
-
-/-
-The set of configurations reachable in at most n steps is a subset of the recursively defined ReachableSet.
--/
-lemma ReachableInAtMost_subset_ReachableSet_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (input : List σ) (n : ℕ) :
-  { c | ReachableInAtMost M (InitialConfig M input) c n } ⊆ ReachableSet M input n := by
-    apply ReachableInAtMost_subset_ReachableSet M input n
-
-/-
-The set of configurations reachable in at most n steps is finite.
--/
-lemma Finite_ReachableInAtMost_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (input : List σ) (n : ℕ) :
-  Set.Finite { c | ReachableInAtMost M (InitialConfig M input) c n } := by
-    exact FiniteReachableSet M input n |> Set.Finite.subset <| ReachableInAtMost_subset_ReachableSet M input n
-
-/-
-The number of bounded configurations is at most the size of the configuration space.
--/
-lemma Card_BoundedConfig_Le_ConfigSpaceSize_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (S : ℕ) (input : List σ) :
-  Nat.card { c | BoundedConfig M S input c } ≤ ConfigSpaceSize M S := by
-    -- By definition of `ConfigSpaceSize`, it is the product of the cardinalities of the state space, the position space, and the tape space.
-    apply Card_BoundedConfig_Le_ConfigSpaceSize M S input
-
-/-
-The set of possible next configurations is finite.
--/
-lemma FiniteNextConfigs_Proof {k : ℕ} [NeZero k] (M : TuringMachine k σ) (c : Configuration k σ M.V) :
-  Set.Finite (NextConfigs M c) := by
-    exact?
-
-/-
-The set of configurations reachable in n+1 steps is the union of those reachable in n steps and their successors.
--/
-lemma ReachableSet_Succ_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (input : List σ) (n : ℕ) :
-  { c | ReachableInAtMost M (InitialConfig M input) c (n + 1) } =
-  { c | ReachableInAtMost M (InitialConfig M input) c n } ∪
-  { c' | ∃ c, ReachableInAtMost M (InitialConfig M input) c n ∧ step M c c' } := by
-    -- By definition of ReachableInAtMost, we can split the set into two parts: those that are reachable in n steps and those that are reachable in n+1 steps but not in n steps.
-    apply ReachableSet_Succ
-
-/-
-The number of configurations reachable in 0 steps is 1.
--/
-lemma ReachableCount_Zero_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (input : List σ) :
-  ReachableCount M input 0 = 1 := by
-    exact?
-
-/-
-Reflexive transitive closure is equivalent to existence of a chain.
--/
-lemma ReflTransGen_iff_ListChain_Proof {α : Type} (R : α → α → Prop) (a b : α) :
-  Relation.ReflTransGen R a b ↔ ∃ l : List α, l.Chain' R ∧ l.head? = some a ∧ l.getLast? = some b := by
-    exact?
-
-/-
-If there exists a chain from a to b, there exists a minimal length chain from a to b.
--/
-lemma Exists_Minimal_Chain_Proof {α : Type} (R : α → α → Prop) (a b : α) :
-  (∃ l : List α, l.Chain' R ∧ l.head? = some a ∧ l.getLast? = some b) →
-  ∃ l : List α, l.Chain' R ∧ l.head? = some a ∧ l.getLast? = some b ∧
-    ∀ l' : List α, l'.Chain' R → l'.head? = some a → l'.getLast? = some b → l.length ≤ l'.length := by
-      intro l
-      obtain ⟨l, hl⟩ := l
-      have h_min : ∃ m ∈ {n : ℕ | ∃ l : List α, List.Chain' R l ∧ l.head? = some a ∧ l.getLast? = some b ∧ l.length = n}, ∀ n ∈ {n : ℕ | ∃ l : List α, List.Chain' R l ∧ l.head? = some a ∧ l.getLast? = some b ∧ l.length = n}, m ≤ n := by
-        exact ⟨ Nat.find ⟨ _, ⟨ l, hl.1, hl.2.1, hl.2.2, rfl ⟩ ⟩, Nat.find_spec ( ⟨ _, ⟨ l, hl.1, hl.2.1, hl.2.2, rfl ⟩ ⟩ : ∃ n, ∃ l : List α, List.Chain' R l ∧ l.head? = some a ∧ l.getLast? = some b ∧ l.length = n ), fun n hn => Nat.find_min' _ hn ⟩
-      generalize_proofs at *; (
-      rcases h_min with ⟨ m, ⟨ l, hl₁, hl₂, hl₃, rfl ⟩, hm ⟩ ; exact ⟨ l, hl₁, hl₂, hl₃, fun l' hl₁' hl₂' hl₃' => hm _ ⟨ l', hl₁', hl₂', hl₃', rfl ⟩ ⟩ ;)
-
-/-
-The length of a Nodup list of elements satisfying P is at most the cardinality of {x | P x}.
--/
-lemma Nodup_List_Length_Le_Card_Proof {α : Type} (P : α → Prop) [DecidablePred P] (l : List α)
-  (h_nodup : l.Nodup) (h_subset : ∀ x ∈ l, P x) (h_finite : Set.Finite {x | P x}) :
-  l.length ≤ Nat.card {x | P x} := by
-    have h_card_le : l.toFinset.card ≤ Nat.card {x | P x} := by
-      rw [ ← Nat.card_eq_finsetCard ];
-      apply_rules [ Nat.card_mono ];
-      exact fun x hx => h_subset x <| List.mem_toFinset.mp hx;
-    rwa [ List.toFinset_card_of_nodup h_nodup ] at h_card_le
-
-/-
-If the Immerman construction exists, then NSPACE is closed under complementation.
--/
-theorem NSPACE_Closed_Under_Complement_Conditional_Proof_2
-  (h_construct : Immerman_Construction_Exists_Prop)
-  {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (S : ℕ → ℕ) (hS : ∀ n, S n ≥ Nat.log2 n) (L : Set (List σ)) :
-  InNSPACE S L → InNSPACE (fun n => 10 * S n) (LanguageComplement L) := by
-    have := @NSPACE_Closed_Under_Complement_Conditional_Thm h_construct σ;
-    convert this S hS L
-
-/-
-The number of configurations reachable in 0 steps is 1.
--/
-lemma ReachableCount_Zero_Thm {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (input : List σ) :
-  ReachableCount M input 0 = 1 := by
-    -- The set of configurations reachable in 0 steps is just the initial configuration, so its cardinality is 1. We can use the fact that the cardinality of a singleton set is 1.
-    have h_singleton : { c | ReachableInAtMost M (InitialConfig M input) c 0 } = { InitialConfig M input } := by
-      exact ReachableInAtMost_Zero M input;
-    rw [ ReachableCount, h_singleton ] ; aesop
-
-/-
-If there is a chain, there is a simple chain.
--/
-lemma ListChain_imp_NodupListChain_Proof {α : Type} [DecidableEq α] (R : α → α → Prop) (a b : α) :
-  (∃ l : List α, l.Chain' R ∧ l.head? = some a ∧ l.getLast? = some b) →
-  ∃ l : List α, l.Chain' R ∧ l.head? = some a ∧ l.getLast? = some b ∧ l.Nodup := by
-    intro h
-    obtain ⟨l, hl_chain, hl_head, hl_last⟩ := h
-    obtain ⟨l', hl'_chain, hl'_head, hl'_last, hl'_min⟩ : ∃ l' : List α, l'.Chain' R ∧ l'.head? = some a ∧ l'.getLast? = some b ∧ ∀ l'' : List α, l''.Chain' R → l''.head? = some a → l''.getLast? = some b → l'.length ≤ l''.length := by
-      -- Apply the hypothesis `h_min` to obtain the minimal chain `l'`.
-      apply Exists_Minimal_Chain R a b ⟨l, hl_chain, hl_head, hl_last⟩;
-    refine' ⟨ l', hl'_chain, hl'_head, hl'_last, _ ⟩;
-    apply_rules [ ShortestChain_is_Nodup ];
-    grind
-
-/-
-A configuration is reachable if and only if it is reachable within a number of steps equal to the number of bounded configurations.
--/
-lemma Reachable_iff_ReachableInAtMost_Max_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (S : ℕ → ℕ) (hS : SpaceBounded M S) (input : List σ) (c : Configuration k σ M.V) :
-  Reachable M (InitialConfig M input) c ↔
-  ReachableInAtMost M (InitialConfig M input) c (Nat.card { x | BoundedConfig M (S input.length) input x }) := by
-    exact?
-
-/-
-There exists a Turing machine that accepts all inputs.
--/
-lemma Exists_Simple_TM_Proof {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ] :
-  ∃ (k : ℕ) (hk : NeZero k) (M : TuringMachine k σ), ∀ x, AcceptsN M x ↔ True := by
-    exact?
-
-/-
-A configuration is reachable iff it is reachable within MaxSteps.
--/
-lemma Reachable_iff_ReachableInAtMost_MaxSteps_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (S : ℕ → ℕ) (hS : SpaceBounded M S) (input : List σ) (c : Configuration k σ M.V) :
-  Reachable M (InitialConfig M input) c ↔
-  ReachableInAtMost M (InitialConfig M input) c (MaxSteps M (S input.length)) := by
-    exact?
-
-/-
-The integer logarithm of a product is at most the sum of the logarithms plus one.
--/
-lemma Nat.log2_mul_le_Proof (a b : ℕ) : Nat.log2 (a * b) ≤ Nat.log2 a + Nat.log2 b + 1 := by
-  exact?
-
-/-
-The set of configurations with space bounded by S is finite.
--/
-lemma FiniteBoundedConfig_Proof {k : ℕ} [NeZero k] (M : TuringMachine k σ) (S : ℕ) (input : List σ) :
-  Set.Finite { c : Configuration k σ M.V | BoundedConfig M S input c } := by
-    exact?
-
-/-
-If we know the size N of a finite set {x | P x}, we can prove that c does not satisfy P by exhibiting a subset S of size N where every element satisfies P, and c is not in S.
--/
-lemma Set_Card_Certificate_Of_NonMembership_Proof {U : Type} (P : U → Prop) [DecidablePred P] (S_P : Set U) (hS_P : S_P = {x | P x}) (hFinite : S_P.Finite) (N : ℕ) (hN : Nat.card S_P = N) (c : U) :
-  (¬ P c) ↔ ∃ (S : Set U), S.Finite ∧ Nat.card S = N ∧ S ⊆ S_P ∧ c ∉ S := by
-    constructor;
-    · grind;
-    · rintro ⟨ S, hS₁, hS₂, hS₃, hS₄ ⟩;
-      have h_card : Nat.card S = Nat.card S_P := by
-        rw [ hS₂, hN ];
-      have h_card : S = S_P := by
-        apply_rules [ Set.eq_of_subset_of_ncard_le ];
-        convert h_card.ge using 1;
-      grind
-
-/-
-The condition that M does not accept input is equivalent to the existence of a count N and a set S of size N of reachable non-accepting configurations.
--/
-lemma Immerman_Condition_Equivalence_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (S : ℕ → ℕ) (hS : SpaceBounded M S) (input : List σ) :
-  (¬ AcceptsN M input) ↔
-  ∃ (N : ℕ), ReachableCount M input (MaxSteps M (S input.length)) = N ∧
-  ∃ (S_set : Set (Configuration k σ M.V)),
-    S_set ⊆ { c | Reachable M (InitialConfig M input) c } ∧
-    Nat.card S_set = N ∧
-    ∀ c ∈ S_set, c.state ≠ M.acceptState := by
-      exact?
-
-/-
-Characterization of the step relation using NextConfig.
--/
-lemma step_eq_NextConfig_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (c c' : Configuration k σ M.V) :
-  step M c c' ↔ ∃ (r : Fin k → σ) (w : Fin (k-1) → σ) (m : Fin k → Move),
-    (c.state, c'.state, r, w, m) ∈ M.edges ∧
-    (∀ i, c.tapes i (c.positions i).toNat = r i) ∧
-    c' = NextConfig c c'.state w m := by
-      refine' ⟨ fun h => _, _ ⟩;
-      · obtain ⟨ r, w, m, h1, h2, h3 ⟩ := h;
-        use r, w, m;
-        refine' ⟨ h1, h2, _ ⟩;
-        unfold NextConfig;
-        congr! 1;
-        · ext i n; rcases i with ⟨ _ | i, hi ⟩ <;> simp_all +decide [ Fin.ext_iff ] ;
-          split_ifs <;> simp_all +decide [ Fin.add_def, Nat.mod_eq_of_lt ];
-          exact h3.1 ⟨ i, Nat.lt_pred_iff.mpr hi ⟩;
-        · exact funext fun i => h3.2.2.1 i;
-      · intro h
-        obtain ⟨r, w, m, h_edge, h_read, h_config⟩ := h
-        use r, w, m;
-        refine' ⟨ h_edge, h_read, _, _, _, _ ⟩ <;> intro i <;> rw [ h_config ] <;> simp +decide [ NextConfig ];
-        tauto
-
-/-
-The set of successor configurations is finite.
--/
-lemma FiniteSuccessors_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (c : Configuration k σ M.V) :
-  Set.Finite { c' | step M c c' } := by
-    exact?
-
-/-
-If `l` is a chain starting at `a`, then every element in `l` is reachable from `a`.
--/
-lemma Chain_implies_Reachable_Proof {α : Type} (R : α → α → Prop) (l : List α) (a : α) :
-  l.Chain' R → l.head? = some a → ∀ x ∈ l, Relation.ReflTransGen R a x := by
-    exact?
-
-/-
-If a chain has a duplicate, it can be shortened to a strictly shorter chain with the same endpoints.
--/
-lemma Chain_shorten_of_duplicate_Proof {α : Type} (R : α → α → Prop) (l : List α)
-  (h_chain : List.Chain' R l)
-  (h_dup : ∃ i j : Fin l.length, i < j ∧ l.get i = l.get j) :
-  ∃ l' : List α, List.Chain' R l' ∧ l'.head? = l.head? ∧ l'.getLast? = l.getLast? ∧ l'.length < l.length := by
-    exact?
-
-/-
-If a chain is a shortest chain between its endpoints, it has no duplicates.
--/
-lemma ShortestChain_is_Nodup_Proof {α : Type} (R : α → α → Prop) (l : List α)
-  (h_chain : l.Chain' R)
-  (h_min : ∀ l' : List α, l'.Chain' R → l'.head? = l.head? → l'.getLast? = l.getLast? → l.length ≤ l'.length) :
-  l.Nodup := by
-    exact?
-
-/-
-The number of configurations reachable in 0 steps is 1.
--/
-lemma ReachableCount_Zero_Proof_2 {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (input : List σ) :
-  ReachableCount M input 0 = 1 := by
-    convert ReachableCount_Zero_Thm M input using 1
-
-/-
-If we know the number of reachable configurations, we can certify non-reachability by exhibiting that many reachable configurations and showing the target is not among them.
--/
-lemma NotReachable_Checkable_Proof {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (input : List σ) (n : ℕ) (N : ℕ) :
-  ReachableCount M input n = N →
-  ∀ c, ¬ ReachableInAtMost M (InitialConfig M input) c n ↔
-  ∃ (S : Set (Configuration k σ M.V)),
-    S.Finite ∧
-    Nat.card S = N ∧
-    (∀ s ∈ S, ReachableInAtMost M (InitialConfig M input) s n) ∧
-    c ∉ S := by
-      exact?
 
 /-
 Definition of Deterministic Turing Machine and DSPACE complexity class.
@@ -1814,87 +1354,6 @@ def InSL {σ : Type} [DecidableEq σ] [Inhabited σ] (S : ℕ → ℕ) (L : Set 
     SymmetricTM M ∧ @SpaceBounded k σ _ hk M S ∧ @LanguageRecognizedByN σ _ k hk M = L
 
 /-
-The set of configurations reachable in 0 steps is exactly the singleton set containing the initial configuration.
--/
-theorem ReachableInAtMost_Zero_ATP {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (input : List σ) :
-  { c | ReachableInAtMost M (InitialConfig M input) c 0 } = { InitialConfig M input } := by
-    convert ReachableInAtMost_Zero M input using 1
-
-/-
-Monotonicity of ReachableInAtMost.
--/
-theorem ReachableInAtMost_Mono_ATP {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (c1 c2 : Configuration k σ M.V) (n : ℕ) :
-  ReachableInAtMost M c1 c2 n → ReachableInAtMost M c1 c2 (n + 1) := by
-    -- Apply the monotonicity lemma to conclude the proof.
-    apply ReachableInAtMost_Mono M c1 c2 n
-
-/-
-If c is reachable in at most n steps and c -> c', then c' is reachable in at most n+1 steps.
--/
-theorem ReachableInAtMost_Step_ATP {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (input : List σ) (c c' : Configuration k σ M.V) (n : ℕ) :
-  ReachableInAtMost M (InitialConfig M input) c n → step M c c' →
-  ReachableInAtMost M (InitialConfig M input) c' (n + 1) := by
-    exact?
-
-/-
-If a configuration is reachable in at most n+1 steps, it is either reachable in at most n steps or it is a successor of a configuration reachable in at most n steps.
--/
-theorem ReachableInAtMost_Succ_Imp_ATP {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (input : List σ) (c' : Configuration k σ M.V) (n : ℕ) :
-  ReachableInAtMost M (InitialConfig M input) c' (n + 1) →
-  ReachableInAtMost M (InitialConfig M input) c' n ∨
-  ∃ c, ReachableInAtMost M (InitialConfig M input) c n ∧ step M c c' := by
-    have := @ReachableInAtMost_Succ_Imp_Proof;
-    exact this M input c' n
-
-/-
-The set of configurations reachable in n+1 steps is the union of those reachable in n steps and their successors.
--/
-theorem ReachableSet_Succ_ATP {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (input : List σ) (n : ℕ) :
-  { c | ReachableInAtMost M (InitialConfig M input) c (n + 1) } =
-  { c | ReachableInAtMost M (InitialConfig M input) c n } ∪
-  { c' | ∃ c, ReachableInAtMost M (InitialConfig M input) c n ∧ step M c c' } := by
-    exact?
-
-/-
-The set of edges in the Turing machine is finite.
--/
-lemma FiniteEdges_ATP {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) : Set.Finite M.edges := by
-    exact?
-
-/-
-The set of possible next configurations derived from edges is finite.
--/
-lemma FiniteNextConfigs_ATP {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (c : Configuration k σ M.V) :
-  Set.Finite (NextConfigs M c) := by
-    exact Set.Finite.image _ ( FiniteEdges_ATP M )
-
-/-
-Characterization of the step relation using NextConfig.
--/
-lemma step_eq_NextConfig_ATP {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ]
-  (M : TuringMachine k σ) (c c' : Configuration k σ M.V) :
-  step M c c' ↔ ∃ (r : Fin k → σ) (w : Fin (k-1) → σ) (m : Fin k → Move),
-    (c.state, c'.state, r, w, m) ∈ M.edges ∧
-    (∀ i, c.tapes i (c.positions i).toNat = r i) ∧
-    c' = NextConfig c c'.state w m := by
-      exact?
-
-/-
-The set of configurations reachable in at most n steps is finite.
--/
-lemma Finite_ReachableInAtMost_ATP {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (input : List σ) (n : ℕ) :
-  Set.Finite { c | ReachableInAtMost M (InitialConfig M input) c n } := by
-    have := @Finite_ReachableInAtMost_Proof k _ σ _ _ _ M input n; aesop;
-
-/-
 If a subset of a finite set has the same cardinality, it is equal to the set.
 -/
 lemma Set_eq_of_subset_of_card_eq_finite {α : Type} {s t : Set α} (ht : t.Finite) (hsub : s ⊆ t) (hcard : Nat.card s = Nat.card t) : s = t := by
@@ -1902,28 +1361,6 @@ lemma Set_eq_of_subset_of_card_eq_finite {α : Type} {s t : Set α} (ht : t.Fini
   · assumption;
   · aesop;
   · exact ht
-
-/-
-If the count of configurations reachable in n steps is N_prev, then the count of configurations reachable in n+1 steps is the size of the set of configurations c such that there exists a witness set S of size N_prev of reachable-in-n configurations, where c is either in S or a successor of S.
--/
-theorem Count_Next_Step_ATP {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (input : List σ) (n : ℕ) (N_prev : ℕ) :
-  ReachableCount M input n = N_prev →
-  ReachableCount M input (n + 1) =
-  Nat.card { c | ∃ (S : Set (Configuration k σ M.V)),
-    S.Finite ∧ Nat.card S = N_prev ∧
-    (∀ s ∈ S, ReachableInAtMost M (InitialConfig M input) s n) ∧
-    (c ∈ S ∨ ∃ s ∈ S, step M s c) } := by
-      convert @Count_Next_Step_Thm k _ σ _ _ _ M input n N_prev
-
-/-
-If Ns is a valid count sequence, then the i-th element of Ns is the number of configurations reachable in at most i steps.
--/
-theorem ValidCountSequence_Correct_ATP {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (input : List σ) (Ns : List ℕ) :
-  ValidCountSequence M input Ns →
-  ∀ i : Fin Ns.length, Ns.get i = ReachableCount M input i := by
-    exact?
 
 /-
 Existence of an Immerman witness implies rejection.
@@ -1949,7 +1386,7 @@ theorem ImmermanWitness_Imp_NotAccepts {k : ℕ} [NeZero k] {σ : Type} [Decidab
     intro h_accept
     obtain ⟨c, hc⟩ := h_accept
     have h_c_in_S_final : c ∈ S_final := by
-      rw [h_S_final_eq] at *; exact (Reachable_iff_ReachableInAtMost_MaxSteps_Proof M S hS input c).mp hc.left;
+      rw [h_S_final_eq] at *; exact (Reachable_iff_ReachableInAtMost_MaxSteps M S hS input c).mp hc.left;
     have h_c_not_accept : c.state ≠ M.acceptState := by
       exact h_S_final.2.2 c h_c_in_S_final
     exact h_c_not_accept (by
@@ -1958,18 +1395,18 @@ theorem ImmermanWitness_Imp_NotAccepts {k : ℕ} [NeZero k] {σ : Type} [Decidab
 /-
 There exists a valid count sequence of length m+1 ending in the correct count.
 -/
-theorem Exists_ValidCountSequence_ATP {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
+theorem Exists_ValidCountSequence {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
   (M : TuringMachine k σ) (input : List σ) (m : ℕ) :
   ∃ Ns, Ns.length = m + 1 ∧ ValidCountSequence M input Ns ∧ Ns.getLast! = ReachableCount M input m := by
     refine' ⟨ List.ofFn fun i : Fin ( m + 1 ) => ReachableCount M input i, _, _, _ ⟩ <;> simp +decide [ Fin.add_def, Fin.last ];
     · constructor;
       · exact List.cons_ne_nil _ _;
       · refine' ⟨ _, _ ⟩;
-        · convert ReachableCount_Zero_Thm M input;
+        · convert ReachableCount_Zero M input;
         · intro i;
           rcases i with ⟨ _ | i, hi ⟩ <;> norm_num [ List.get! ] at hi ⊢;
           · rw [ show ReachableCount M input 1 = Nat.card { c : Configuration k σ M.V | ∃ S : Set ( Configuration k σ M.V ), S.Finite ∧ S.ncard = ReachableCount M input 0 ∧ ( ∀ s ∈ S, ReachableInAtMost M ( InitialConfig M input ) s 0 ) ∧ ( c ∈ S ∨ ∃ s ∈ S, step M s c ) } from ?_ ] ; aesop;
-            convert Count_Next_Step_ATP M input 0 _ rfl using 1;
+            convert Count_Next_Step M input 0 _ rfl using 1;
           · rw [ if_pos hi, if_pos ( Nat.lt_of_succ_lt hi ) ];
             convert Count_Next_Step M input ( i + 1 ) ( ReachableCount M input ( i + 1 ) ) rfl using 1;
     · grind
@@ -1982,7 +1419,7 @@ theorem NotAccepts_Imp_ImmermanWitness {k : ℕ} [NeZero k] {σ : Type} [Decidab
   ¬ AcceptsN M input → ∃ Ns S_final, ImmermanWitness M S hS input Ns S_final := by
     intro h_not_accepts
     set m := MaxSteps M (S input.length) with hm_def
-    obtain ⟨Ns, hNs_length, hNs_valid, hNs_last⟩ : ∃ Ns : List ℕ, Ns.length = m + 1 ∧ ValidCountSequence M input Ns ∧ Ns.getLast! = ReachableCount M input m := Exists_ValidCountSequence_ATP M input m
+    obtain ⟨Ns, hNs_length, hNs_valid, hNs_last⟩ : ∃ Ns : List ℕ, Ns.length = m + 1 ∧ ValidCountSequence M input Ns ∧ Ns.getLast! = ReachableCount M input m := Exists_ValidCountSequence M input m
     set S_final := { c : Configuration k σ M.V | ReachableInAtMost M (InitialConfig M input) c m } with hS_final_def
     have h_card_S_final : Nat.card S_final = Ns.getLast! := by
       exact hNs_last.symm ▸ rfl
@@ -1997,42 +1434,24 @@ theorem NotAccepts_Imp_ImmermanWitness {k : ℕ} [NeZero k] {σ : Type} [Decidab
     constructor <;> aesop
 
 /-
-A Turing machine M rejects an input if and only if there exists an Immerman witness.
--/
-theorem ImmermanWitness_Theorem_ATP {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (M : TuringMachine k σ) (S : ℕ → ℕ) (hS : SpaceBounded M S) (input : List σ) :
-  (¬ AcceptsN M input) ↔ ∃ Ns S_final, ImmermanWitness M S hS input Ns S_final := by
-    exact?
-
-/-
-If the Immerman construction exists, then NSPACE is closed under complementation.
--/
-theorem NSPACE_Closed_Under_Complement_Conditional_Proof_3
-  (h_construct : Immerman_Construction_Exists_Prop)
-  {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
-  (S : ℕ → ℕ) (hS : ∀ n, S n ≥ Nat.log2 n) (L : Set (List σ)) :
-  InNSPACE S L → InNSPACE (fun n => 10 * S n) (LanguageComplement L) := by
-    convert NSPACE_Closed_Under_Complement_Conditional_Thm h_construct S hS L using 1
-
-/-
 The existence of an Immerman witness can be verified in NSPACE(O(S)).
 -/
 lemma ImmermanWitness_Verifiable_In_NSPACE {k : ℕ} [NeZero k] {σ : Type} [DecidableEq σ] [Inhabited σ] [Fintype σ]
   (M : TuringMachine k σ) (S : ℕ → ℕ) (hS : SpaceBounded M S) (hS_log : ∀ n, S n ≥ Nat.log2 n) :
   InNSPACE (fun n => 10 * S n) { input | ∃ Ns S_final, ImmermanWitness M S hS input Ns S_final } := by
-    convert NSPACE_Closed_Under_Complement_Conditional_Proof_3 _ _ _ _;
+    convert NSPACE_Closed_Under_Complement_Conditional _ _ _ _;
     any_goals assumption;
     any_goals exact { input | ¬AcceptsN M input };
     · constructor <;> intro h;
-      · convert NSPACE_Closed_Under_Complement_Conditional_Proof_3 _ _ _ _ using 1;
+      · convert NSPACE_Closed_Under_Complement_Conditional _ _ _ _ using 1;
         · exact?;
         · infer_instance;
         · infer_instance;
         · assumption;
-      · have := @NSPACE_Closed_Under_Complement_Conditional_Proof_3;
+      · have := @NSPACE_Closed_Under_Complement_Conditional;
         convert this ( by exact? ) S hS_log _ _ using 1;
         any_goals exact { input | AcceptsN M input };
-        · ext input; simp [LanguageComplement, ImmermanWitness_Theorem_ATP];
+        · ext input; simp [LanguageComplement, ImmermanWitness_Correct];
           exact?;
         · infer_instance;
         · infer_instance;

@@ -11,21 +11,6 @@
    ACTION: Delete all _Proof/_Thm/_ATP duplicates; update any call sites to
    use the original lemma directly.
 
-2. DualMachine variants (lines 2067-2141)
-   DualMachine, DualMachine_v3, DualMachine_v4 define nearly the same machine
-   with minor state-type differences (Option vs Sum). Only DualMachine_v4 style
-   (Sum) is arguably needed, since NormalizedTM_v2 supersedes them all.
-   ACTION: Keep only the one actually used (none are referenced later); delete
-   the rest.
-
-3. NormalizedTM / NormalizedTM_v2 (lines 2207-2260)
-   NormalizedTM and NormalizedTM_v2 are character-for-character identical.
-   ACTION: Delete NormalizedTM; rename NormalizedTM_v2 to NormalizedTM.
-
-4. AcceptsCoN_imp_NormalizedTM_v2_AcceptsCoN x3 (lines 2441-2537)
-   Three versions: the original, _v2 (body is `exact?`), and _v3 (calls _v2).
-   ACTION: Keep one; delete the other two.
-
 5. Repeated Nat.log2 helper lemmas (lines 1207-1259, 1397-1412)
    Nat.log2_mul_le / Nat.log2_mul_le_Proof
    Nat.log2_pow_le / Nat.log2_pow_le_Proof
